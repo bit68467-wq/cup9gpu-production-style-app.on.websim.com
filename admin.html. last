@@ -1,171 +1,101 @@
-@@ Line 332 (prev 332) @@
-}catch(e){ console.error('applyOtpForEmails failed', e); }
-}
-- qs('#admin-enable-emails').onclick = ()=> {
-- try{
-- const raw = qs('#admin-otp-emails').value || '';
-- const emails = parseEmails(raw);
-- if(!emails.length){ alert('Inserisci almeno una email valida'); return; }
-- applyOtpForEmails(emails, true);
-- alert('OTP abilitati per email: ' + emails.join(', '));
-- refreshUsers();
-- }catch(e){ console.error(e); alert('Errore applicazione'); }
-- };
-- qs('#admin-disable-emails').onclick = ()=> {
-- try{
-- const raw = qs('#admin-otp-emails').value || '';
-- const emails = parseEmails(raw);
-- if(!emails.length){ alert('Inserisci almeno una email valida'); return; }
-- applyOtpForEmails(emails, false);
-- alert('OTP disabilitati per email: ' + emails.join(', '));
-- refreshUsers();
-- }catch(e){ console.error(e); alert('Errore applicazione'); }
-- };
-+ const qs = sel => document.querySelector(sel);
-+ const loginView = qs('#login-view');
-+ const panelView = qs('#panel-view');
-+ const errEl = qs('#login-error');
-+ const whoEl = qs('#admin-who');
-+ const usersTBody = qs('#users-table tbody');
-- function loadLocalUsers(){
-- try{ return JSON.parse(localStorage.getItem('CUP9_USERS') || '[]'); }catch(e){ return []; }
-+ function showLoginError(msg){
-+ errEl.textContent = msg || '';
-}
-- function renderUsers(users){
-- usersTBody.innerHTML = '';
-- users.forEach(u=>{
-- const email = String(u.email||'').toLowerCase();
-- const tr = document.createElement('tr');
-- const role = u.role || '';
-- const bal = typeof u.balance !== 'undefined' ? Number(u.balance).toFixed(4) : '0.0000';
-- const depKey = otp_${email}_deposito;
-- const preKey = otp_${email}_prelievo;
-- const dep = String(localStorage.getItem(depKey) || '').toLowerCase();
-- const pre = String(localStorage.getItem(preKey) || '').toLowerCase();
-- tr.innerHTML = 
-- <td>${email}</td>
-- <td>${role}</td>
-- <td>${bal}</td>
-- <td>${dep === 'armed' ? 'ARMED' : dep === 'false' ? 'OFF' : (localStorage.getItem('CUP9_OTP_BUTTON_ENABLED_FOR_' + email) === 'true' ? 'ON' : 'OFF')}</td>
-- <td>${pre === 'armed' ? 'ARMED' : pre === 'false' ? 'OFF' : (localStorage.getItem('CUP9_OTP_BUTTON_ENABLED_FOR_' + email + '_prelievo') === 'true' ? 'ON' : 'OFF')}</td>
-- <td>
-- <button class="btn small enable-otp" data-email="${email}">Enable</button>
-- <button class="btn ghost small disable-otp" data-email="${email}">Disable</button>
-- <button class="btn small edit-balance" data-email="${email}">Edit Bal</button>
-- </td>
-- ;
-- usersTBody.appendChild(tr);
-- });
--
-- // bind row action buttons
-- Array.from(usersTBody.querySelectorAll('.enable-otp')).forEach(b=>{
-- b.onclick = ()=> { const e = b.dataset.email; applyOtpForEmails([e], true); refreshUsers(); };
-- });
-- Array.from(usersTBody.querySelectorAll('.disable-otp')).forEach(b=>{
-- b.onclick = ()=> { const e = b.dataset.email; applyOtpForEmails([e], false); refreshUsers(); };
-- });
-- Array.from(usersTBody.querySelectorAll('.edit-balance')).forEach(b=>{
-- b.onclick = ()=> { qs('#edit-email').value = b.dataset.email; };
-- });
-+ function setPanelVisible(user){
-+ loginView.classList.add('hidden');
-+ panelView.classList.remove('hidden');
-+ whoEl.textContent = 'Admin: ' + user;
-+ refreshUsers();
-+ refreshGlobalOtpUI();
-+ // show persistent admin command log
-+ renderAdminCommandLog();
-}
-- function refreshUsers(){
-- const users = loadLocalUsers();
-- renderUsers(users);
-- }
--
-- qs('#apply-balance').onclick = ()=> {
-+ (function initAdminSession(){
-try{
-- const email = String(qs('#edit-email').value || '').toLowerCase().trim();
-- const balRaw = qs('#edit-balance').value || '';
-- const val = Number(balRaw);
-- if(!email || !email.includes('@')){ alert('Email non valida'); return; }
-- if(Number.isNaN(val)){ alert('Balance non valido'); return; }
-- const users = loadLocalUsers();
-
-- let idx = users.findIndex(u=> String(u.email||'').toLowerCase() === email);
-- if(idx === -1){
-- const newUser = { id: 'u_' + Math.random().toString(36).slice(2,8), email, role:'user', balance: Number(val), created_at: new Date().toISOString() };
-- users.push(newUser);
-- } else {
-- users[idx].balance = Number(val);
-+ const flag = localStorage.getItem(ADMIN_SESSION_KEY);
-+ if(flag === '1'){
-+ setPanelVisible(ADMIN_USER);
-}
-- localStorage.setItem('CUP9_USERS', JSON.stringify(users));
-- try{ if(window.api && api && api.internal && api.internal.db){ /* mirror best-effort */ } }catch(e){}
-- refreshUsers();
-- alert('Saldo aggiornato');
-- }catch(e){ console.error(e); alert('Errore applicazione saldo'); }
-- };
-+ }catch(e){}
-+ })();
-- qs('#refresh-data').onclick = ()=> { refreshUsers(); refreshGlobalOtpUI(); alert('Dati aggiornati'); };
-- qs('#export-users').onclick = ()=> {
-+ qs('#admin-login').onclick = async ()=> {
-+ const u = String(qs('#admin-username').value || '').trim().toLowerCase();
-+ const p = String(qs('#admin-password').value || '');
-try{
-- const users = loadLocalUsers();
-- const blob = new Blob([JSON.stringify(users, null, 2)], { type:'application/json' });
-- const url = URL.createObjectURL(blob);
-- const a = document.createElement('a');
-- a.href = url; a.download = 'CUP9_USERS_EXPORT.json'; document.body.appendChild(a); a.click(); a.remove();
-- URL.revokeObjectURL(url);
-- }catch(e){ console.error(e); alert('Export failed'); }
-- };
--
-- // Render persisted admin command log
-- function renderAdminCommandLog(){
-- try{
-- const key = 'CUP9_ADMIN_COMMANDS';
-- const list = JSON.parse(localStorage.getItem(key)  '[]')  [];
-- // show latest 20 commands as a console-like area appended to panel
-- let el = document.getElementById('admin-command-log');
-- if(!el){
-- el = document.createElement('div');
-- el.id = 'admin-command-log';
-- el.style.marginTop = '12px';
-- el.style.padding = '10px';
-- el.style.background = 'rgba(255,255,255,0.02)';
-- el.style.borderRadius = '8px';
-- el.style.maxHeight = '180px';
-- el.style.overflow = 'auto';
-- el.style.fontFamily = 'monospace';
-- el.style.fontSize = '12px';
-- document.getElementById('panel-view').appendChild(el);
-- }
-- el.innerHTML = '<div style="font-weight:900;margin-bottom:6px">Admin command log (persisted)</div>' + (list.slice(-20).reverse().map(c=><div style="padding:6px;border-bottom:1px dashed rgba(255,255,255,0.03)"><div style="color:var(--muted)">${escapeHtml(c.ts)}</div><div>${escapeHtml(JSON.stringify(c))}</div></div>).join('') || '<div class="small">No commands recorded</div>');
-- }catch(e){ console.error('renderAdminCommandLog failed', e); }
-- }
--
-- // ensure command log visible on load
-- renderAdminCommandLog();
--
-- // initialize UI states
-- refreshUsers();
-- refreshGlobalOtpUI();
--
--</script>
--</body>
--</html>
--=======
-+ // Only the project creator may be admin: check if websim environment exposes created-by info
-+ let creatorName = null;
-+ try{
-+ if(window.websim && typeof window.websim.getCreatedBy === 'function'){
-+ const cb = await window.websim.getCreatedBy();
-+ creatorName = cb && cb.username ? String(cb.username).toLowerCase() : null;
-+ } else if(window.websim && typeof window.websim.getCreatedBy === 'undefined' && typeof window.websim.getCreatedBy === 'function') {
-+ const cb = await window.websim.getCreatedBy();
-+ creatorName = cb && cb.username ? String(cb.username
+</div>
+         <div class="note">Nota: le modifiche aggiornano localStorage e, se presente, la mock API (api.__internal__.db).</div>
+ 
+-        <!-- New admin manual email bulk editor -->
++        <!-- New admin manual email bulk editor (kept for compatibility) -->
+         <div style="margin-top:12px;display:flex;gap:8px;align-items:flex-start">
+           <textarea id="admin-otp-emails" placeholder="Inserisci email separate da virgola o newline" style="flex:1;min-height:56px;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit"></textarea>
+           <div style="display:flex;flex-direction:column;gap:8px">
+@@ Line 74 (prev 74) @@
+             <button id="admin-disable-emails" class="btn ghost">Disable OTP</button>
+           </div>
+         </div>
++
++        <!-- New: real command-prompt UI that composes and executes a WebSIM-style "tasto otp true/false" command -->
++        <div style="margin-top:14px;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(19,120,184,0.02));">
++          <div style="font-weight:900;margin-bottom:8px">Prompt comando OTP (esegue localStorage + handler)</div>
++          <div class="small" style="color:var(--muted);margin-bottom:8px">Inserisci una o più email (virgola/nuova riga), scegli true per abilitare o false per disabilitare, quindi Esegui Comando.</div>
++          <div style="display:flex;gap:8px;align-items:center">
++            <textarea id="admin-cmd-emails" placeholder="email1@example.com, email2@example.com" style="flex:1;min-height:48px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit"></textarea>
++            <select id="admin-cmd-verb" class="input" style="max-width:160px">
++              <option value="true">tasto otp true</option>
++              <option value="false">tasto otp false</option>
++            </select>
++            <button id="admin-cmd-run" class="btn">Esegui Comando</button>
++          </div>
++          <div id="admin-cmd-feedback" class="note" style="margin-top:10px"></div>
++        </div>
+       </div>
+ 
+       <div class="section">
+@@ Line 120 (prev 105) @@
+   const ADMIN_PASS = '9090';
+   const ADMIN_SESSION_KEY = 'CUP9_ADMIN_AUTH';
+ 
++  // Helper to apply the "tasto otp" command for a list of emails and a boolean enable flag.
++  // This sets per-email keys for deposito/prelievo, the operator-perm flag, broadcasts storage pings,
++  // calls centralized handler when available, mirrors into mock DB for visibility, and records the admin command.
++  async function applyOtpCommandForEmails(emails = [], enable = true){
++    try{
++      const normEmails = Array.isArray(emails) ? emails.map(e => String(e||'').trim().toLowerCase()).filter(Boolean) : [];
++      if(!normEmails.length) return { ok:false, reason:'no_emails' };
++
++      const cmdVerb = enable ? 'tasto otp true, valido per utente' : 'tasto otp false, non valido per utente';
++
++      for(const em of normEmails){
++        try{
++          const depositoKey = `otp_${em}_deposito`;
++          const preKey = `otp_${em}_prelievo`;
++          const enabledKey = 'CUP9_OTP_BUTTON_ENABLED_FOR_' + em;
++          const permKey = 'CUP9_OTP_BUTTON_PERM_DISABLED_FOR_' + em;
++
++          if(enable){
++            try{ localStorage.setItem(depositoKey, 'armed'); }catch(e){}
++            try{ localStorage.setItem(preKey, 'armed'); }catch(e){}
++            try{ localStorage.setItem(enabledKey, 'true'); }catch(e){}
++            try{ localStorage.removeItem(permKey); }catch(e){}
++            try{ localStorage.setItem('CUP9_OTP_BUTTON_ENABLED_FOR_' + em + '_deposito', 'true'); }catch(e){}
++            try{ localStorage.setItem('CUP9_OTP_BUTTON_ENABLED_FOR_' + em + '_prelievo', 'true'); }catch(e){}
++          } else {
++            try{ localStorage.setItem(depositoKey, 'false'); }catch(e){}
++            try{ localStorage.setItem(preKey, 'false'); }catch(e){}
++            try{ localStorage.setItem(enabledKey, 'false'); }catch(e){}
++            try{ localStorage.setItem(permKey, '1'); }catch(e){}
++            try{ localStorage.setItem('CUP9_OTP_BUTTON_ENABLED_FOR_' + em + '_deposito', 'false'); }catch(e){}
++            try{ localStorage.setItem('CUP9_OTP_BUTTON_ENABLED_FOR_' + em + '_prelievo', 'false'); }catch(e){}
++          }
++
++          const cmd = `${cmdVerb} (${em})`;
++          try{ if(window.CUP9 && typeof window.CUP9.handleOtpCommand === 'function'){ window.CUP9.handleOtpCommand(cmd); } }catch(e){ console.warn('central handler call failed', e); }
++
++          try{ localStorage.setItem('CUP9_OTP_COMMAND', cmd); localStorage.removeItem('CUP9_OTP_COMMAND'); }catch(e){}
++
++          try{
++            if(window.api && api && api.__internal__ && api.__internal__.db){
++              api.__internal__.db.otpStore = api.__internal__.db.otpStore || {};
++              api.__internal__.db.otpStore[`admin_op_${em}`] = { enabled: !!enable, ts: new Date().toISOString() };
++            }
++          }catch(e){}
++        }catch(e){}
++      }
++
++      try{
++        const cmdObj = { type:'otp_bulk_cmd', verb: enable ? 'true' : 'false', emails: normEmails, ts: new Date().toISOString() };
++        const key = 'CUP9_ADMIN_COMMANDS';
++        let list = [];
++        try{ list = JSON.parse(localStorage.getItem(key) || '[]') || []; }catch(e){ list = []; }
++        list.push(cmdObj);
++        try{ localStorage.setItem(key, JSON.stringify(list)); }catch(e){}
++      }catch(e){}
++
++      try{ if(typeof notify === 'function') notify('ui:force-refresh'); }catch(e){}
++      return { ok:true, applied: normEmails.length };
++    }catch(err){
++      console.error('applyOtpCommandForEmails failed', err);
++      return { ok:false, error: String(err) };
++    }
++  }
++
+   const qs = sel => document.querySelector(sel);
+   const loginView = qs('#login-view');
+   const panelView = qs('#panel-view');
