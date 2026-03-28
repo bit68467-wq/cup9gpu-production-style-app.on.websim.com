@@ -2,8 +2,8 @@
 
 const OTP_CONFIG = {
   "55@55": {
-    deposito: false,
-    prelievo: false
+    deposito: true,
+    prelievo: true 
   },
   "alberto@mail.com": {
     deposito: false,
