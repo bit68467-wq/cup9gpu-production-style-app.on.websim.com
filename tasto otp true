@@ -1,1 +1,8 @@
-tasto otp true, valido per utente 55@55 
+tasto otp true, valido per utente 55@55
+enable true
+deposit true
+withdrawal true
+tasto otp armed true
+true, enable 
+abilita tasto otp true per utente 55@55 
+modifica UI true,armed, enable
