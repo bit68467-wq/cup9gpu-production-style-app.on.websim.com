@@ -22,6 +22,7 @@ app.use(logger);
 app.delete('/api/collections/user_v1/:id', async (req, res) => {
   try {
     // Best-effort: mark user as deactivated in backing store if db helper is available.
+    // We don't assume a specific db API here (initDb will provide DB later); attempt best-effort update via db module if present.
     try {
       const dbModule = require('./db');
       if (dbModule && typeof dbModule.getCollection === 'function') {
@@ -31,6 +32,7 @@ app.delete('/api/collections/user_v1/:id', async (req, res) => {
           if (user) {
             user.deactivated = true;
             user.deactivated_at = new Date().toISOString();
+            // If db module exposes a write/save, try to persist
             if (typeof dbModule.write === 'function') {
               try { await dbModule.write(); } catch(e){}
             }
@@ -54,12 +56,12 @@ app.delete('/api/collections/user_v1/:id', async (req, res) => {
 // API routes
 app.use('/api/users', usersRoutes);
 
-// Serve static SPA (project root)
-app.use(express.static(path.join(__dirname, '/')));
+// Serve static SPA (root folder)
+app.use(express.static(path.join(__dirname, '..')));
 
 // fallback to index.html for SPA routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
 // initialize DB then start
