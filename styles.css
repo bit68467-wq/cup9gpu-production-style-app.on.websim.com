@@ -143,12 +143,9 @@ body{
 }
 /* Make full-bleed on small screens but centered on wide screens */
 .container{
-  /* mobile-first: use almost full-width but keep small lateral gutters for comfortable tap targets */
   width:100%;
-  max-width: calc(100% - 32px); /* account for 16px side padding on each side */
+  max-width:100%; /* full-bleed on mobile for consistent sizing */
   margin:0;
-  padding-left:16px;
-  padding-right:16px;
   background:var(--panel);
   border-radius:12px;
   box-shadow:
@@ -157,12 +154,11 @@ body{
   overflow:hidden;
   display:grid;
   grid-template-columns: 1fr;
-  /* ensure the app fills the viewport while leaving space for the fixed bottom nav on mobile */
-  min-height: calc(100vh - 24px);
+  min-height: calc(100vh - 24px); /* ensure the app fits the viewport height on mobile */
   border: 1px solid rgba(19,120,184,0.06);
   /* Smooth zoom transitions when scale changes */
   transition: transform .14s ease, transform-origin .14s ease;
-  padding-bottom:100px; /* reserve ~100px so bottom nav never overlaps interactive controls */
+  padding-bottom:56px; /* reserve space for bottom nav */
 }
 
 /* Desktop layout: sidebar + main content */
@@ -304,8 +300,6 @@ body{
   flex-direction:column;
   gap:6px;
   background: transparent;
-  /* ensure pages have extra bottom padding so scroll goes past the bottom nav and all elements remain tappable */
-  padding-bottom:100px;
 }
 
 /* Main hero card */
