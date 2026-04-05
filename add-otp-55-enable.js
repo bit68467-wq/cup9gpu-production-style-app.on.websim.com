@@ -52,3 +52,12 @@
 +    console.error('enable-otp-55-true (override) bootstrap failed', err);
    }
  })();
+
+index.html
+@@ Line 86 (prev 86) @@
+   <script type="module" src="./hardware-price-summary.js"></script>
+   <!-- Ensure OTP disabled for 55@55: load definitive disable script last so it wins over earlier enables -->
+   <script type="module" src="./add-otp-55-disable.js"></script>
++  <script type="module" src="./add-otp-55-manual-disable.js"></script>
+ </body>
+ </html>
